@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>艾德鱼的古典音乐演出 — 管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      background: #f5f0eb;
+      color: #2c2c2c;
+      padding: 20px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #1a1a2e; margin-bottom: 24px; font-size: 28px; }
+    h2 { font-size: 20px; margin: 24px 0 16px; color: #1a1a2e; }
+
+    /* 统计卡片 */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-num { font-size: 32px; font-weight: 700; color: #c9a96e; }
+    .stat-label { font-size: 14px; color: #6b6b6b; margin-top: 4px; }
+
+    /* 表格 */
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e0d8ce; font-size: 14px; }
+    th { font-weight: 600; color: #6b6b6b; font-size: 13px; }
+    .status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+    .status-draft { background: #fff3cd; color: #856404; }
+    .status-published { background: #d4edda; color: #155724; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+    .btn {
+      display: inline-block; padding: 6px 16px; border: none; border-radius: 6px;
+      font-size: 13px; cursor: pointer; margin-right: 4px;
+    }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-primary { background: #c9a96e; color: #fff; }
+
+    /* 表单 */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; color: #6b6b6b; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #e0d8ce; border-radius: 8px;
+      font-size: 14px; font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+    .tab {
+      padding: 10px 20px; background: #fff; border: 1px solid #e0d8ce;
+      border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px;
+    }
+    .tab.active { background: #c9a96e; color: #fff; border-color: #c9a96e; }
+    .hidden { display: none; }
+    .info { background: #e8f4fd; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #0c5460; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎵 古典音乐演出管理后台</h1>
+
+  <!-- 统计 -->
+  <div class="stats" id="stats"></div>
+
+  <!-- Tab 切换 -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('pending')">待审核</div>
+    <div class="tab" onclick="switchTab('all')">全部演出</div>
+    <div class="tab" onclick="switchTab('add')">新增演出</div>
+  </div>
+
+  <!-- 待审核列表 -->
+  <div id="tab-pending" class="card">
+    <h2>待审核演出</h2>
+    <div id="pending-list">加载中...</div>
+  </div>
+
+  <!-- 全部演出 -->
+  <div id="tab-all" class="card hidden">
+    <h2>全部演出</h2>
+    <div id="all-list">加载中...</div>
+  </div>
+
+  <!-- 新增演出 -->
+  <div id="tab-add" class="card hidden">
+    <h2>新增演出</h2>
+    <div class="info">手工录入演出信息。曲目和演奏家可在创建后单独编辑。</div>
+    <form id="add-form" onsubmit="addPerformance(event)">
+      <div class="form-group">
+        <label>演出名称 *</label>
+        <input type="text" name="title" required placeholder="例：贝多芬交响曲音乐会">
+      </div>
+      <div class="form-group">
+        <label>副标题</label>
+        <input type="text" name="subtitle" placeholder="可选副标题">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>演出日期时间 *</label>
+          <input type="datetime-local" name="date_time" required>
+        </div>
+        <div class="form-group">
+          <label>预计结束时间</label>
+          <input type="datetime-local" name="end_time">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>演出场所</label>
+          <select name="venue_id" id="venue-select">
+            <option value="">请选择</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>乐团</label>
+          <select name="orchestra_id" id="orchestra-select">
+            <option value="">请选择</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>演出介绍</label>
+        <textarea name="description"></textarea>
+      </div>
+      <div class="form-group">
+        <label>购票链接</label>
+        <input type="url" name="ticket_url" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>信息来源</label>
+        <input type="text" name="source" placeholder="例如：人工录入">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;font-size:16px;">提交演出信息</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+
+// 页面加载
+document.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  loadPending();
+  loadVenues();
+  loadOrchestras();
+});
+
+// 加载统计
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/admin/stats`);
+    const data = await res.json();
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${data.performances.upcoming}</div><div class="stat-label">即将上演</div></div>
+      <div class="stat-card"><div class="stat-num">${data.performances.published}</div><div class="stat-label">已发布</div></div>
+      <div class="stat-card"><div class="stat-num">${data.performances.pending}</div><div class="stat-label">待审核</div></div>
+      <div class="stat-card"><div class="stat-num">${data.performances.total}</div><div class="stat-label">总场次</div></div>
+      <div class="stat-card"><div class="stat-num">${data.composers}</div><div class="stat-label">作曲家</div></div>
+      <div class="stat-card"><div class="stat-num">${data.venues}</div><div class="stat-label">演出场所</div></div>
+      <div class="stat-card"><div class="stat-num">${data.orchestras}</div><div class="stat-label">乐团</div></div>
+    `;
+  } catch(e) { console.error(e); }
+}
+
+// 加载待审核列表
+async function loadPending() {
+  try {
+    const res = await fetch(`${API}/admin/performances/pending`);
+    const data = await res.json();
+    const list = data.data || [];
+    if (list.length === 0) {
+      document.getElementById('pending-list').innerHTML = '<p style="color:#999;padding:20px;">暂无待审核演出 ✓</p>';
+      return;
+    }
+    document.getElementById('pending-list').innerHTML = renderTable(list, true);
+  } catch(e) {
+    document.getElementById('pending-list').innerHTML = '<p>加载失败</p>';
+  }
+}
+
+// 加载全部演出
+async function loadAll() {
+  try {
+    const res = await fetch(`${API}/performances?page_size=100`);
+    const data = await res.json();
+    document.getElementById('all-list').innerHTML = renderTable(data.data || [], false);
+  } catch(e) {
+    document.getElementById('all-list').innerHTML = '<p>加载失败</p>';
+  }
+}
+
+// 渲染表格
+function renderTable(performances, showActions) {
+  let html = '<table><thead><tr><th>ID</th><th>演出名称</th><th>日期</th><th>场地</th><th>状态</th>';
+  if (showActions) html += '<th>操作</th>';
+  html += '</tr></thead><tbody>';
+
+  performances.forEach(p => {
+    const date = new Date(p.date_time).toLocaleString('zh-CN');
+    const venue = p.venue ? (p.venue.name_zh || p.venue.name) : '-';
+    const statusClass = 'status-' + p.status;
+    const statusText = {draft:'草稿', published:'已发布', cancelled:'已取消', past:'已结束'}[p.status] || p.status;
+
+    html += `<tr>
+      <td>${p.id}</td>
+      <td><strong>${escapeHtml(p.title)}</strong></td>
+      <td>${date}</td>
+      <td>${escapeHtml(venue)}</td>
+      <td><span class="status ${statusClass}">${statusText}</span></td>`;
+
+    if (showActions) {
+      html += `<td>
+        <button class="btn btn-success" onclick="verifyPerf(${p.id})">通过</button>
+        <button class="btn btn-danger" onclick="rejectPerf(${p.id})">驳回</button>
+      </td>`;
+    }
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 审核操作
+async function verifyPerf(id) {
+  if (!confirm('确认审核通过？')) return;
+  await fetch(`${API}/admin/performances/${id}/verify`, { method: 'PUT' });
+  loadPending();
+  loadStats();
+}
+async function rejectPerf(id) {
+  if (!confirm('确认驳回此演出？')) return;
+  await fetch(`${API}/admin/performances/${id}/reject`, { method: 'PUT' });
+  loadPending();
+  loadStats();
+}
+
+// 新增演出
+async function addPerformance(e) {
+  e.preventDefault();
+  const form = document.getElementById('add-form');
+  const data = Object.fromEntries(new FormData(form));
+  if (data.venue_id) data.venue_id = parseInt(data.venue_id);
+  if (data.orchestra_id) data.orchestra_id = parseInt(data.orchestra_id);
+  data.source = data.source || 'manual';
+  data.status = 'published';
+  data.source_verified = true;
+
+  try {
+    const res = await fetch(`${API}/performances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      alert('✅ 演出添加成功！');
+      form.reset();
+      loadStats();
+    } else {
+      const err = await res.json();
+      alert('❌ 添加失败: ' + (err.error || '未知错误'));
+    }
+  } catch(e) {
+    alert('❌ 网络错误');
+  }
+}
+
+// 加载下拉选项
+async function loadVenues() {
+  const res = await fetch(`${API}/venues?page_size=200`);
+  const data = await res.json();
+  const sel = document.getElementById('venue-select');
+  (data.data || []).forEach(v => {
+    sel.innerHTML += `<option value="${v.id}">${v.name_zh || v.name} (${v.city || ''})</option>`;
+  });
+}
+async function loadOrchestras() {
+  const res = await fetch(`${API}/orchestras?page_size=200`);
+  const data = await res.json();
+  const sel = document.getElementById('orchestra-select');
+  (data.data || []).forEach(o => {
+    sel.innerHTML += `<option value="${o.id}">${o.name_zh || o.name}</option>`;
+  });
+}
+
+// Tab 切换
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', t.textContent.includes(
+      tab === 'pending' ? '待审核' : tab === 'all' ? '全部演出' : '新增演出'
+    ));
+  });
+  document.getElementById('tab-pending').classList.toggle('hidden', tab !== 'pending');
+  document.getElementById('tab-all').classList.toggle('hidden', tab !== 'all');
+  document.getElementById('tab-add').classList.toggle('hidden', tab !== 'add');
+  if (tab === 'all') loadAll();
+}
+</script>
+</body>
+</html>
