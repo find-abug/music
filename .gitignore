@@ -1,0 +1,12 @@
+node_modules/
+.env
+.DS_Store
+Thumbs.db
+
+# SQLite journals / local scratch only — publish DB is committed
+*.db-journal
+backend/data/*.db-journal
+
+# Keep accidental DBs elsewhere ignored, but allow backend/data/classical_music.db
+*.db
+!backend/data/classical_music.db
