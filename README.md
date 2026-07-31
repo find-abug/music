@@ -137,6 +137,32 @@ GET /api/performances?composer_id=1&orchestra_id=2&city=北京&date_from=2026-07
 4. 配置 Nginx 反向代理 + HTTPS
 5. 域名备案（ICP）
 
+## 网站部署（Railway）
+
+线上分享地址：https://classical-music-production.up.railway.app
+
+仓库：[find-abug/music](https://github.com/find-abug/music) 的 `backend/` 部署在 [Railway](https://railway.com)。  
+线上使用 Postgres（`DATABASE_URL`）；本地开发仍默认 SQLite（`backend/data/classical_music.db`）。
+
+### 更新线上数据
+
+1. 本地启动：`cd backend && npm run dev`
+2. 用 http://localhost:3000/admin 修改数据（写入本地 SQLite）
+3. 若需同步到线上 Postgres：导出/重新导入种子，或在本地改完后更新 `backend/data/seed.json` 并重新部署（首次启动会在空库时从 `seed.json` 导入）
+4. 推送代码触发 Railway 自动部署：
+
+```bash
+git add -A
+git commit -m "data: update performances"
+git push
+```
+
+### 部署注意
+
+- Root Directory 必须为 `backend`
+- 环境变量：`NODE_ENV=production`，以及指向 Postgres 的 `DATABASE_URL`
+- Railway 试用额度有限（控制台可见剩余天数/金额）
+
 ## 注意事项
 
 - 微信小程序包体积限制 2MB
