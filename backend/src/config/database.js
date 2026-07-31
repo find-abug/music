@@ -1,23 +1,36 @@
 const { Sequelize } = require('sequelize');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
-// 使用 SQLite — 零配置，数据文件直接存在项目目录
-const dbPath = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'classical_music.db');
+const define = {
+  timestamps: false,
+  underscored: true,
+};
 
-// 确保 data 目录存在
-const fs = require('fs');
-const dir = path.dirname(dbPath);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+function createSequelize() {
+  if (process.env.DATABASE_URL) {
+    return new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'postgres',
+      logging: false,
+      dialectOptions: process.env.DATABASE_SSL === 'true'
+        ? { ssl: { require: true, rejectUnauthorized: false } }
+        : {},
+      define,
+    });
+  }
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: dbPath,
-  logging: false, // SQLite 日志太吵，关掉
-  define: {
-    timestamps: false,
-    underscored: true,
-  },
-});
+  // Local / default: SQLite file in project data directory
+  const dbPath = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'classical_music.db');
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-module.exports = sequelize;
+  return new Sequelize({
+    dialect: 'sqlite',
+    storage: dbPath,
+    logging: false,
+    define,
+  });
+}
+
+module.exports = createSequelize();
